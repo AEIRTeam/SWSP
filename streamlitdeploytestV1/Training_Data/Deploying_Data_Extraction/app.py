@@ -1,4 +1,5 @@
 # app.py
+from sheets import display_google_sheets_section, fetch_google_sheets
 import streamlit as st
 import pandas as pd
 import time
@@ -28,6 +29,17 @@ def load_spacy_model():
         return spacy.blank("en")
 
 # =========================
+# Reset Function
+# =========================
+def reset_app():
+    """Reset all session state variables."""
+    keys_to_reset = ["results_df", "data_loaded", "current_df", "data_source"]
+    for key in keys_to_reset:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.rerun()
+
+# =========================
 # Page Configuration
 # =========================
 st.set_page_config(
@@ -37,10 +49,16 @@ st.set_page_config(
 )
 
 # =========================
-# Session State
+# Session State Initialization
 # =========================
 if "results_df" not in st.session_state:
     st.session_state.results_df = None
+if "data_loaded" not in st.session_state:
+    st.session_state.data_loaded = False
+if "current_df" not in st.session_state:
+    st.session_state.current_df = None
+if "data_source" not in st.session_state:
+    st.session_state.data_source = None
 
 # =========================
 # Main App
@@ -49,46 +67,118 @@ st.title("📊 Incident Report Entity Extractor")
 st.write("Extract structured data from unstructured incident reports using pattern matching and machine learning.")
 
 # =========================
-# File Upload Section
+# Data Source Selection Section
 # =========================
-st.header("📁 Upload Data")
+st.header("📁 Data Source")
 
-uploaded_file = st.file_uploader(
-    "Upload your CSV file with incident reports",
-    type=["csv"],
-    help="CSV must contain a 'text' column with incident descriptions"
+# Radio button for data source selection
+data_source_option = st.radio(
+    "Choose your data source:",
+    ("File Upload", "Google Sheets"),
+    horizontal=True,
+    key="data_source_radio"
 )
 
-if uploaded_file is not None:
-    try:
-        df = pd.read_csv(uploaded_file)
-        
-        if "text" not in df.columns:
-            st.error("CSV must contain a 'text' column")
-            st.stop()
-        
-        # Data summary
-        valid_rows = df['text'].notna().sum()
-        empty_rows = len(df) - valid_rows
-        
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Rows", f"{len(df):,}")
-        col2.metric("Valid Rows", f"{valid_rows:,}")
-        col3.metric("Empty Rows", f"{empty_rows:,}")
-        
-        # Preview data
-        with st.expander("Data Preview"):
-            st.dataframe(df.head(), use_container_width=True)
-        
-    except Exception as e:
-        st.error(f"Error loading file: {str(e)}")
-        st.stop()
+df = None
 
 # =========================
-# Processing Options
+# File Upload Section
 # =========================
-if uploaded_file is not None:
+if data_source_option == "File Upload":
+    uploaded_file = st.file_uploader(
+        "Upload your CSV file with incident reports",
+        type=["csv"],
+        help="CSV must contain a 'text' column with incident descriptions"
+    )
+
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file)
+            
+            if "text" not in df.columns:
+                st.error("CSV must contain a 'text' column")
+                st.stop()
+            
+            # Store in session state
+            st.session_state.current_df = df
+            st.session_state.data_loaded = True
+            st.session_state.data_source = "File Upload"
+            
+            # Data summary
+            valid_rows = df['text'].notna().sum()
+            empty_rows = len(df) - valid_rows
+            
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total Rows", f"{len(df):,}")
+            col2.metric("Valid Rows", f"{valid_rows:,}")
+            col3.metric("Empty Rows", f"{empty_rows:,}")
+            
+            # Preview data
+            with st.expander("Data Preview"):
+                st.dataframe(df.head(), use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"Error loading file: {str(e)}")
+            st.stop()
+
+# =========================
+# Google Sheets Section
+# =========================
+elif data_source_option == "Google Sheets":
+    st.write("Configure your Google Sheets connection:")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        spreadsheet_name = st.text_input(
+            "Spreadsheet Name", 
+            value="Botpress Chat Output",
+            help="Enter the exact name of your Google Spreadsheet"
+        )
+    with col2:
+        worksheet_name = st.text_input(
+            "Worksheet Name", 
+            value="Sheet2",
+            help="Enter the name of the worksheet/tab"
+        )
+    
+    if st.button("📊 Load Google Sheets Data", type="primary", use_container_width=True):
+        with st.spinner("Fetching data from Google Sheets..."):
+            df_sheets = fetch_google_sheets(spreadsheet_name, worksheet_name)
+            
+            if df_sheets is not None:
+                # Check for required 'text' column
+                if "text" not in df_sheets.columns:
+                    st.error("Google Sheets data must contain a 'text' column")
+                    st.write("Available columns:", list(df_sheets.columns))
+                    st.stop()
+                
+                # Store in session state
+                df = df_sheets
+                st.session_state.current_df = df
+                st.session_state.data_loaded = True
+                st.session_state.data_source = "Google Sheets"
+                
+                # Data summary
+                valid_rows = df['text'].notna().sum()
+                empty_rows = len(df) - valid_rows
+                
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Total Rows", f"{len(df):,}")
+                col2.metric("Valid Rows", f"{valid_rows:,}")
+                col3.metric("Empty Rows", f"{empty_rows:,}")
+
+# Use data from session state if available
+if st.session_state.data_loaded and st.session_state.current_df is not None:
+    df = st.session_state.current_df
+
+# =========================
+# Processing Options Section
+# =========================
+if df is not None:
     st.header("⚙️ Processing Options")
+    
+    # Show current data source
+    st.info(f"📊 Data Source: **{st.session_state.data_source}** | Rows: **{len(df):,}**")
     
     col1, col2 = st.columns(2)
     
@@ -107,7 +197,7 @@ if uploaded_file is not None:
 # =========================
 # Processing Section
 # =========================
-if uploaded_file is not None:
+if df is not None:
     st.header("🚀 Start Processing")
     
     if st.button("Process Data", type="primary", use_container_width=True):
@@ -350,7 +440,14 @@ with st.expander("🧪 Test Pattern Extraction"):
             st.warning("Enter some test text first")
 
 # =========================
-# Footer
+# Reset Section
 # =========================
 st.markdown("---")
-st.markdown("**💡 Tip:** Enhanced Pattern Matching works best for consistent incident report formats.")
+col1, col2 = st.columns([3, 1])
+
+with col1:
+    st.markdown("**💡 Tip:** Enhanced Pattern Matching works best for consistent incident report formats.")
+
+with col2:
+    if st.button("🔄 Reset App", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
+        reset_app()
