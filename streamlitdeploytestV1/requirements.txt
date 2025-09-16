@@ -9,3 +9,7 @@ regex>=2022.0.0
 nltk>=3.7
 fuzzywuzzy>=0.18.0
 python-levenshtein>=0.12.0
+gspread
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
