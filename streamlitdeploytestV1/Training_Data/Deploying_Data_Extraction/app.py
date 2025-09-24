@@ -346,7 +346,7 @@ if st.session_state.results_df is not None:
     st.subheader("Field Extraction Statistics")
     
     desired_fields = ['reporter_name', 'person_involved', 'incident_date', 'incident_time',
-                     'department', 'location', 'was_injured', 'label']
+                     'department', 'location', 'was_injured', 'label', 'incident_description', 'injury_description']
     
     field_stats = []
     for field in desired_fields:
@@ -357,16 +357,80 @@ if st.session_state.results_df is not None:
                         (df_results[field] != "None") &
                         (df_results[field].astype(str).str.strip() != ""))
             extracted_count = non_empty.sum()
+            blank_count = len(df_results) - extracted_count
             extraction_rate = (extracted_count / len(df_results)) * 100
+            blank_rate = (blank_count / len(df_results)) * 100
+            
             field_stats.append({
                 'Field': field.replace('_', ' ').title(),
                 'Extracted': f"{extracted_count:,}",
-                'Rate': f"{extraction_rate:.1f}%"
+                'Blank': f"{blank_count:,}",
+                'Extraction Rate': f"{extraction_rate:.1f}%",
+                'Blank Rate': f"{blank_rate:.1f}%"
             })
     
     if field_stats:
         stats_df = pd.DataFrame(field_stats)
         st.dataframe(stats_df, use_container_width=True)
+    
+    # Overall blank analysis
+    st.subheader("📊 Blank Value Analysis")
+    
+    # Calculate rows with any blank values
+    extraction_fields = [f for f in desired_fields if f in df_results.columns]
+    if extraction_fields:
+        # Create a mask for non-blank values across all fields
+        non_blank_mask = pd.DataFrame()
+        for field in extraction_fields:
+            non_blank_mask[field] = (df_results[field].notna() & 
+                                   (df_results[field] != "") & 
+                                   (df_results[field] != "None") &
+                                   (df_results[field].astype(str).str.strip() != ""))
+        
+        # Calculate statistics
+        rows_with_all_fields = non_blank_mask.all(axis=1).sum()
+        rows_with_any_blank = (~non_blank_mask.all(axis=1)).sum()
+        rows_completely_blank = (~non_blank_mask.any(axis=1)).sum()
+        
+        # Display metrics
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Complete Records", f"{rows_with_all_fields:,}", 
+                   f"{(rows_with_all_fields/len(df_results))*100:.1f}%")
+        col2.metric("Records with Blanks", f"{rows_with_any_blank:,}", 
+                   f"{(rows_with_any_blank/len(df_results))*100:.1f}%")
+        col3.metric("Completely Blank", f"{rows_completely_blank:,}", 
+                   f"{(rows_completely_blank/len(df_results))*100:.1f}%")
+        col4.metric("Avg Fields per Record", 
+                   f"{non_blank_mask.sum(axis=1).mean():.1f}/{len(extraction_fields)}")
+        
+        # Show distribution of blank counts
+        blank_counts = non_blank_mask.sum(axis=1)
+        st.subheader("📈 Field Extraction Distribution")
+        
+        # Create distribution chart
+        distribution_data = blank_counts.value_counts().sort_index()
+        chart_data = pd.DataFrame({
+            'Fields Extracted': distribution_data.index,
+            'Number of Records': distribution_data.values
+        })
+        st.bar_chart(data=chart_data.set_index('Fields Extracted'))
+        
+        # Show percentage breakdown
+        st.subheader("🔍 Extraction Completeness Breakdown")
+        completeness_stats = []
+        for i in range(len(extraction_fields) + 1):
+            count = (blank_counts == i).sum()
+            percentage = (count / len(df_results)) * 100
+            if count > 0:
+                completeness_stats.append({
+                    'Fields Extracted': f"{i}/{len(extraction_fields)}",
+                    'Records': f"{count:,}",
+                    'Percentage': f"{percentage:.1f}%"
+                })
+        
+        if completeness_stats:
+            completeness_df = pd.DataFrame(completeness_stats)
+            st.dataframe(completeness_df, use_container_width=True)
     
     # Sample results
     st.subheader("Sample Results")
