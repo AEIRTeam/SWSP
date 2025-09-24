@@ -7,6 +7,7 @@ import io
 from datetime import datetime
 import spacy
 import logging
+import traceback
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +34,7 @@ def load_spacy_model():
 # =========================
 def reset_app():
     """Reset all session state variables."""
-    keys_to_reset = ["results_df", "data_loaded", "current_df", "data_source"]
+    keys_to_reset = ["results_df", "data_loaded", "current_df", "data_source", "error_log"]
     for key in keys_to_reset:
         if key in st.session_state:
             del st.session_state[key]
@@ -59,6 +60,8 @@ if "current_df" not in st.session_state:
     st.session_state.current_df = None
 if "data_source" not in st.session_state:
     st.session_state.data_source = None
+if "error_log" not in st.session_state:
+    st.session_state.error_log = []
 
 # =========================
 # Main App
@@ -184,15 +187,13 @@ if df is not None:
     
     with col1:
         processing_method = st.radio(
-            "Select Processing Method:",
-            # options=["Enhanced Pattern Matching", "Ensemble + Pattern Hybrid"],
+            "Processing Method:",
             options=["Enhanced Pattern Matching"],
             index=0,
             help="Enhanced Pattern Matching is recommended for most use cases"
         )
     
     with col2:
-        batch_size = st.slider("Batch Size", min_value=10, max_value=500, value=100)
         show_progress = st.checkbox("Show detailed progress", value=True)
 
 # =========================
@@ -202,6 +203,9 @@ if df is not None:
     st.header("🚀 Start Processing")
     
     if st.button("Process Data", type="primary", use_container_width=True):
+        
+        # Clear previous error log
+        st.session_state.error_log = []
         
         # Initialize extractors
         pattern_extractor = RobustPatternExtractor()
@@ -213,6 +217,7 @@ if df is not None:
         # Processing setup
         results = []
         total_rows = len(df)
+        batch_size = 100  # Fixed batch size
         
         # Progress tracking
         if show_progress:
@@ -220,13 +225,12 @@ if df is not None:
             status_text = st.empty()
             metrics_container = st.container()
             with metrics_container:
-                col_m1, col_m2, col_m3 = st.columns(3)
+                col_m1, col_m2 = st.columns(2)
                 processed_metric = col_m1.empty()
-                success_metric = col_m2.empty()
-                rate_metric = col_m3.empty()
+                errors_metric = col_m2.empty()
         
         start_time = time.time()
-        successful_extractions = 0
+        error_count = 0
         
         # Process data
         for i in range(0, total_rows, batch_size):
@@ -234,7 +238,6 @@ if df is not None:
             batch_df = df.iloc[i:batch_end]
             
             batch_results = []
-            batch_successes = 0
             
             for idx, row in batch_df.iterrows():
                 try:
@@ -246,8 +249,15 @@ if df is not None:
                             **{field: "" for field in ['reporter_name', 'person_involved', 'incident_date', 
                                                      'incident_time', 'department', 'incident_description', 
                                                      'location', 'label', 'was_injured', 'injury_description']},
-                            "error": "Empty text"
+                            "processing_error": "Empty or null text input"
                         }
+                        error_count += 1
+                        st.session_state.error_log.append({
+                            "row_index": idx,
+                            "error_type": "Empty Input",
+                            "error_message": "Empty or null text input",
+                            "text_preview": "N/A"
+                        })
                     else:
                         if processing_method == "Enhanced Pattern Matching":
                             final_result = pattern_extractor.extract_comprehensive(text)
@@ -255,30 +265,40 @@ if df is not None:
                             ensemble_result, _ = ensemble_extractor.extract_with_voting(text)
                             final_result = ensemble_result
                         
-                        # Count successful extractions
-                        filled_fields = sum(1 for v in final_result.values() if v and str(v).strip())
-                        if filled_fields >= 3:
-                            batch_successes += 1
-                        
                         result_row = {
                             "original_index": idx,
-                            **final_result
+                            **final_result,
+                            "processing_error": ""
                         }
                 
                 except Exception as e:
-                    logger.error(f"Error processing row {idx}: {str(e)}")
+                    error_count += 1
+                    error_message = str(e)
+                    traceback_info = traceback.format_exc()
+                    
+                    logger.error(f"Error processing row {idx}: {error_message}")
+                    logger.error(f"Traceback: {traceback_info}")
+                    
+                    # Store detailed error info
+                    st.session_state.error_log.append({
+                        "row_index": idx,
+                        "error_type": type(e).__name__,
+                        "error_message": error_message,
+                        "text_preview": str(row.get("text", ""))[:100] + "..." if len(str(row.get("text", ""))) > 100 else str(row.get("text", "")),
+                        "traceback": traceback_info
+                    })
+                    
                     result_row = {
                         "original_index": idx,
                         **{field: "" for field in ['reporter_name', 'person_involved', 'incident_date', 
                                                  'incident_time', 'department', 'incident_description', 
                                                  'location', 'label', 'was_injured', 'injury_description']},
-                        "error": str(e)
+                        "processing_error": f"{type(e).__name__}: {error_message}"
                     }
                 
                 batch_results.append(result_row)
             
             results.extend(batch_results)
-            successful_extractions += batch_successes
             
             # Update progress
             if show_progress:
@@ -288,24 +308,22 @@ if df is not None:
                 elapsed_time = time.time() - start_time
                 processing_rate = batch_end / elapsed_time if elapsed_time > 0 else 0
                 
-                status_text.text(f"Processing batch {i//batch_size + 1}/{(total_rows-1)//batch_size + 1}")
+                status_text.text(f"Processing batch {i//batch_size + 1}/{(total_rows-1)//batch_size + 1} | Rate: {processing_rate:.1f} rows/sec")
                 processed_metric.metric("Processed", f"{batch_end:,}")
-                success_metric.metric("Success Rate", f"{(successful_extractions/batch_end)*100:.1f}%")
-                rate_metric.metric("Rate (rows/sec)", f"{processing_rate:.1f}")
+                errors_metric.metric("Errors", f"{error_count:,}")
         
         # Store results
         st.session_state.results_df = pd.DataFrame(results)
         
         # Final summary
         total_time = time.time() - start_time
-        final_success_rate = (successful_extractions / total_rows) * 100
         
-        if final_success_rate > 70:
-            st.success(f"Processing completed! {total_rows:,} rows processed in {total_time:.1f}s with {final_success_rate:.1f}% success rate")
-        elif final_success_rate > 40:
-            st.warning(f"Processing completed with {final_success_rate:.1f}% success rate")
+        if error_count == 0:
+            st.success(f"✅ Processing completed successfully! {total_rows:,} rows processed in {total_time:.1f}s with no errors.")
+        elif error_count < total_rows * 0.1:  # Less than 10% errors
+            st.warning(f"⚠️ Processing completed with {error_count:,} errors out of {total_rows:,} rows ({(error_count/total_rows)*100:.1f}%)")
         else:
-            st.error(f"Processing completed with low success rate: {final_success_rate:.1f}%")
+            st.error(f"❌ Processing completed with {error_count:,} errors out of {total_rows:,} rows ({(error_count/total_rows)*100:.1f}%)")
 
 # =========================
 # Results Section
@@ -317,15 +335,15 @@ if st.session_state.results_df is not None:
     
     # Summary metrics
     total_processed = len(df_results)
-    error_count = df_results['error'].notna().sum() if 'error' in df_results.columns else 0
+    error_count = (df_results['processing_error'] != "").sum() if 'processing_error' in df_results.columns else 0
     
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Processed", f"{total_processed:,}")
-    col2.metric("Errors", f"{error_count:,}")
+    col2.metric("Processing Errors", f"{error_count:,}")
     col3.metric("Clean Records", f"{total_processed - error_count:,}")
     
-    # Field success rates
-    st.subheader("Field Extraction Success Rates")
+    # Field extraction statistics
+    st.subheader("Field Extraction Statistics")
     
     desired_fields = ['reporter_name', 'person_involved', 'incident_date', 'incident_time',
                      'department', 'location', 'was_injured', 'label']
@@ -338,12 +356,12 @@ if st.session_state.results_df is not None:
                         (df_results[field] != "") & 
                         (df_results[field] != "None") &
                         (df_results[field].astype(str).str.strip() != ""))
-            success_count = non_empty.sum()
-            success_rate = (success_count / len(df_results)) * 100
+            extracted_count = non_empty.sum()
+            extraction_rate = (extracted_count / len(df_results)) * 100
             field_stats.append({
                 'Field': field.replace('_', ' ').title(),
-                'Success Rate': f"{success_rate:.1f}%",
-                'Count': f"{success_count:,}"
+                'Extracted': f"{extracted_count:,}",
+                'Rate': f"{extraction_rate:.1f}%"
             })
     
     if field_stats:
@@ -354,21 +372,63 @@ if st.session_state.results_df is not None:
     st.subheader("Sample Results")
     
     # Show clean results
-    if 'error' in df_results.columns:
-        clean_results = df_results[df_results['error'].isna()]
+    if 'processing_error' in df_results.columns:
+        clean_results = df_results[df_results['processing_error'] == ""]
     else:
         clean_results = df_results
         
     if len(clean_results) > 0:
         display_cols = [col for col in clean_results.columns 
-                       if col not in ['original_index', 'error']]
+                       if col not in ['original_index', 'processing_error']]
         st.dataframe(clean_results[display_cols].head(10), use_container_width=True)
     
-    # Show errors if any
+    # Show processing errors if any
     if error_count > 0:
-        with st.expander(f"View Errors ({error_count} records)"):
-            error_df = df_results[df_results['error'].notna()]
-            st.dataframe(error_df[['original_index', 'error']].head(10), use_container_width=True)
+        with st.expander(f"⚠️ View Processing Errors ({error_count} records)", expanded=False):
+            error_df = df_results[df_results['processing_error'] != ""]
+            st.dataframe(error_df[['original_index', 'processing_error']].head(10), use_container_width=True)
+
+# =========================
+# Error Analysis Section
+# =========================
+if st.session_state.error_log and len(st.session_state.error_log) > 0:
+    st.header("🔍 Error Analysis")
+    
+    error_df = pd.DataFrame(st.session_state.error_log)
+    
+    # Error type breakdown
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Error Types")
+        error_type_counts = error_df['error_type'].value_counts()
+        st.bar_chart(error_type_counts)
+    
+    with col2:
+        st.subheader("Error Summary")
+        for error_type, count in error_type_counts.items():
+            st.metric(error_type, f"{count:,}")
+    
+    # Detailed error log
+    with st.expander("📋 Detailed Error Log", expanded=False):
+        st.dataframe(
+            error_df[['row_index', 'error_type', 'error_message', 'text_preview']], 
+            use_container_width=True
+        )
+    
+    # Download error log
+    st.subheader("📥 Download Error Log")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    csv_buffer = io.StringIO()
+    error_df.to_csv(csv_buffer, index=False)
+    st.download_button(
+        label="📊 Download Error Log as CSV",
+        data=csv_buffer.getvalue(),
+        file_name=f"error_log_{timestamp}.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
 
 # =========================
 # Download Section
@@ -379,8 +439,8 @@ if st.session_state.results_df is not None:
     # Prepare download data
     download_df = st.session_state.results_df.copy()
     
-    # Remove internal columns
-    columns_to_remove = ['original_index', 'error']
+    # Remove internal columns but keep processing_error for transparency
+    columns_to_remove = ['original_index']
     for col in columns_to_remove:
         if col in download_df.columns:
             download_df = download_df.drop(columns=[col])
@@ -424,19 +484,23 @@ with st.expander("🧪 Test Pattern Extraction"):
     
     if st.button("Test Extraction"):
         if test_text.strip():
-            pattern_extractor = RobustPatternExtractor()
-            result = pattern_extractor.extract_comprehensive(test_text)
-            
-            st.subheader("Extraction Results:")
-            
-            for field, value in result.items():
-                if value:
-                    st.write(f"**{field.replace('_', ' ').title()}:** {value}")
-            
-            # Success rate
-            extracted_fields = [field for field, value in result.items() if value]
-            success_rate = len(extracted_fields) / len(result) * 100
-            st.metric("Extraction Success", f"{success_rate:.1f}%")
+            try:
+                pattern_extractor = RobustPatternExtractor()
+                result = pattern_extractor.extract_comprehensive(test_text)
+                
+                st.subheader("Extraction Results:")
+                
+                for field, value in result.items():
+                    if value:
+                        st.write(f"**{field.replace('_', ' ').title()}:** {value}")
+                
+                # Show fields that were extracted
+                extracted_fields = [field for field, value in result.items() if value]
+                st.metric("Fields Extracted", f"{len(extracted_fields)}/{len(result)}")
+                
+            except Exception as e:
+                st.error(f"Error during test extraction: {str(e)}")
+                st.code(traceback.format_exc())
         else:
             st.warning("Enter some test text first")
 
@@ -451,5 +515,4 @@ with col1:
 
 with col2:
     if st.button("🔄 Reset App", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
-
         reset_app()
