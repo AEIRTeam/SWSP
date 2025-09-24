@@ -185,7 +185,8 @@ if df is not None:
     with col1:
         processing_method = st.radio(
             "Select Processing Method:",
-            options=["Enhanced Pattern Matching", "Ensemble + Pattern Hybrid"],
+            # options=["Enhanced Pattern Matching", "Ensemble + Pattern Hybrid"],
+            options=["Enhanced Pattern Matching"],
             index=0,
             help="Enhanced Pattern Matching is recommended for most use cases"
         )
@@ -450,4 +451,5 @@ with col1:
 
 with col2:
     if st.button("🔄 Reset App", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
+
         reset_app()
