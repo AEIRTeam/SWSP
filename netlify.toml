@@ -1,0 +1,11 @@
+[build]
+  base = "swsr site"              # the subdirectory containing the chatbot site
+  publish = "swsr site"           # for plain static site (index.html inside /swsr site)
+
+
+# Only build when files under /swsr site change:
+[build.environment]
+
+
+[build]
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF swsr site/"
