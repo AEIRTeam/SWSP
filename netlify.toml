@@ -3,4 +3,4 @@
   publish = "."           # for plain static site (index.html inside /swsr site)
   command = ""
 
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF site/ netlify.toml"
+ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF site/ netlify.toml"
