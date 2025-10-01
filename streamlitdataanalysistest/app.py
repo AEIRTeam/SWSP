@@ -866,6 +866,7 @@ if uploaded_file:
                 st.plotly_chart(fig, use_container_width=True)
 
     # --- EXPORT INSIGHTS ---
+    """
     st.subheader("📤 Export Analytics")
     col1, col2, col3 = st.columns(3)
     
@@ -880,6 +881,7 @@ if uploaded_file:
     with col3:
         if st.button("📅 Schedule Reports"):
             st.success(f"Report scheduling configured for {selected_department}! (Feature in development)")
+    """
 
 else:
     st.info("👆 Upload your incident CSV file to unlock powerful safety analytics and predictive insights")
@@ -898,4 +900,5 @@ else:
     st.write("• ✅ Advanced trend-based incident forecasting (using numpy)")
     st.write("• ✅ Advanced risk assessment and recommendations")
     st.write("• ✅ **Department-specific insights and comparisons**")
+
     st.write("• ✅ **Department vs Organization performance metrics**")
