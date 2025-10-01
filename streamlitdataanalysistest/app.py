@@ -865,25 +865,6 @@ if uploaded_file:
                             color='department', title="Top 5 Departments - Monthly Trends")
                 st.plotly_chart(fig, use_container_width=True)
 
-    """
-    # --- EXPORT INSIGHTS ---
-    
-    st.subheader("📤 Export Analytics")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("📊 Generate Report"):
-            st.success(f"Analytics report generated for {selected_department}! (Feature in development)")
-    
-    with col2:
-        if st.button("📧 Email Insights"):
-            st.success(f"Insights email sent for {selected_department}! (Feature in development)")
-    
-    with col3:
-        if st.button("📅 Schedule Reports"):
-            st.success(f"Report scheduling configured for {selected_department}! (Feature in development)")
-    """
-
 else:
     st.info("👆 Upload your incident CSV file to unlock powerful safety analytics and predictive insights")
     st.write("**Expected columns for optimal analysis:**")
@@ -903,4 +884,5 @@ else:
     st.write("• ✅ **Department-specific insights and comparisons**")
 
     st.write("• ✅ **Department vs Organization performance metrics**")
+
 
