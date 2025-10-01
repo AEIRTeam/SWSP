@@ -865,8 +865,9 @@ if uploaded_file:
                             color='department', title="Top 5 Departments - Monthly Trends")
                 st.plotly_chart(fig, use_container_width=True)
 
-    # --- EXPORT INSIGHTS ---
     """
+    # --- EXPORT INSIGHTS ---
+    
     st.subheader("📤 Export Analytics")
     col1, col2, col3 = st.columns(3)
     
@@ -902,3 +903,4 @@ else:
     st.write("• ✅ **Department-specific insights and comparisons**")
 
     st.write("• ✅ **Department vs Organization performance metrics**")
+
