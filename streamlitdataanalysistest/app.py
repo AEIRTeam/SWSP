@@ -872,17 +872,3 @@ else:
     st.write("• Department & Location, Incident Description")
     st.write("• Label/Category, Injury Information (was_injured: boolean)")
     
-    st.write("**🆕 New Features in this version:**")
-    st.write("• ✅ **Department Selector** - Filter analysis by specific department")
-    st.write("• ✅ **Fixed Monthly Percentage Calculation** - Accurate month-over-month trends")
-    st.write("• ✅ Smart time column detection (handles 00:00:00 issue)")
-    st.write("• ✅ Top 5 incident location predictions for next 3 months")
-    st.write("• ✅ Incident category trend forecasting")
-    st.write("• ✅ Enhanced department matrix with color legend")
-    st.write("• ✅ Advanced trend-based incident forecasting (using numpy)")
-    st.write("• ✅ Advanced risk assessment and recommendations")
-    st.write("• ✅ **Department-specific insights and comparisons**")
-
-    st.write("• ✅ **Department vs Organization performance metrics**")
-
-
