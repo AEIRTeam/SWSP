@@ -872,8 +872,16 @@ else:
     st.write("• Department & Location, Incident Description")
     st.write("• Label/Category, Injury Information (was_injured: boolean)")
     
+# =========================
+# Reset Section
+# =========================
 st.markdown("---")
-col1 = st.columns([3, 1])
+col1, col2 = st.columns([3, 1])
 
 with col1:
     st.markdown("💡 Created by AUT R&D Students 2025")
+
+with col2:
+    if st.button("🔄 Reset App", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
+        reset_app()
+
