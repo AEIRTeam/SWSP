@@ -876,12 +876,9 @@ else:
 # Reset Section
 # =========================
 st.markdown("---")
-col1, col2 = st.columns([3, 1])
+
+# Single column
+col1 = st.container()
 
 with col1:
     st.markdown("💡 Created by AUT R&D Students 2025")
-
-with col2:
-    if st.button("🔄 Reset App", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
-        reset_app()
-
