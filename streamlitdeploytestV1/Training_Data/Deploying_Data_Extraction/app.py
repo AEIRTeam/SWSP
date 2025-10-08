@@ -477,37 +477,6 @@ if st.session_state.results_df is not None:
             use_container_width=True
         )
 
-# =========================
-# Testing Section
-# =========================
-with st.expander("🧪 Test Pattern Extraction"):
-    test_text = st.text_area(
-        "Test your extraction on sample text:",
-        value="John Smith reported that Mary Johnson was injured at the warehouse on March 15, 2024 at 2:30 PM when she slipped and cut her hand.",
-        height=100
-    )
-    
-    if st.button("Test Extraction"):
-        if test_text.strip():
-            try:
-                pattern_extractor = RobustPatternExtractor()
-                result = pattern_extractor.extract_comprehensive(test_text)
-                
-                st.subheader("Extraction Results:")
-                
-                for field, value in result.items():
-                    if value:
-                        st.write(f"**{field.replace('_', ' ').title()}:** {value}")
-                
-                # Show fields that were extracted
-                extracted_fields = [field for field, value in result.items() if value]
-                st.metric("Fields Extracted", f"{len(extracted_fields)}/{len(result)}")
-                
-            except Exception as e:
-                st.error(f"Error during test extraction: {str(e)}")
-                st.code(traceback.format_exc())
-        else:
-            st.warning("Enter some test text first")
 
 # =========================
 # Reset Section
@@ -516,8 +485,9 @@ st.markdown("---")
 col1, col2 = st.columns([3, 1])
 
 with col1:
-    st.markdown("**💡 Tip:** Enhanced Pattern Matching works best for consistent incident report formats.")
+    st.markdown("💡 Created by AUT R&D Students 2025")
 
 with col2:
     if st.button("🔄 Reset App", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
         reset_app()
+
