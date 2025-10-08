@@ -2,18 +2,89 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Babcock Safety Reporting</title>
+  <style>
+    :root {
+      --brand: #0a4db3;
+      --brand-dark: #07357b;
+      --bg: #f7f9fc;
+      --text: #0f172a;
+      --muted: #475569;
+      --card: #ffffff;
+      --shadow: 0 6px 18px rgba(2, 6, 23, 0.08);
+      --radius: 12px;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
+
+    main {
+      background: var(--card);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      padding: 2rem 2.5rem;
+      max-width: 600px;
+    }
+
+    h1 {
+      color: var(--brand-dark);
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      margin: 0.5rem 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .hint {
+      margin-top: 1.25rem;
+      font-style: italic;
+      color: var(--brand-dark);
+      background: rgba(10, 77, 179, 0.08);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
+
+    footer {
+      margin-top: 2rem;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+  </style>
 </head>
 <body>
   <main>
     <h1>Babcock Safety Reporting</h1>
-    <p>Use the chat widget to file a report.</p>
-    <p>Logging a report may take up to 10 minutes to complete</p>
+    <p>Welcome to the safety reporting portal.</p>
+    <p>Please use the chat bubble in the bottom-right corner of your screen to file a report.</p>
+    <p>Submitting a report may take up to 10 minutes to complete.</p>
+
+    <div class="hint">💬 Click the blue chat button to begin your report.</div>
   </main>
 
+  <footer>&copy; <span id="year"></span> Babcock. All rights reserved.</footer>
+
   <!-- Botpress webchat embed -->
-<script src="https://cdn.botpress.cloud/webchat/v3.3/inject.js" defer></script>
-<script src="https://files.bpcontent.cloud/2025/05/15/00/20250515003812-C670PSI4.js" defer></script>
+  <script src="https://cdn.botpress.cloud/webchat/v3.3/inject.js" defer></script>
+  <script src="https://files.bpcontent.cloud/2025/05/15/00/20250515003812-C670PSI4.js" defer></script>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
