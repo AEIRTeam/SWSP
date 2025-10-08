@@ -872,3 +872,8 @@ else:
     st.write("• Department & Location, Incident Description")
     st.write("• Label/Category, Injury Information (was_injured: boolean)")
     
+st.markdown("---")
+col1 = st.columns([3, 1])
+
+with col1:
+    st.markdown("💡 Created by AUT R&D Students 2025")
