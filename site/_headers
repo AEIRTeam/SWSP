@@ -1,2 +1,5 @@
 /*
-  Basic-Auth: admin admin
+  Basic-Auth: admin:admin
+
+User-agent: *
+Disallow: /
