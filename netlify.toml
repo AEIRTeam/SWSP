@@ -1,6 +1,6 @@
 [build]
   base = "site"              # the subdirectory containing the chatbot site
-  publish = "."           # for plain static site (index.html inside /swsr site)
+  publish = "site"              # for plain static site (index.html inside /site)
   command = ""
 
 ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF site/ netlify.toml"
